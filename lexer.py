@@ -1,25 +1,42 @@
+# ===============================================
+# step1_lexer.py
+# Lexical Analyzer for mini compiler
+# Supports: int, float, string, char, bool, identifiers, operators
+# ===============================================
+
 import re
 
-def lexer(code):
-    token_patterns = [
-        ('KEYWORD', r'\b(int|float|if|else|while|print)\b'),
-        ('IDENTIFIER', r'[a-zA-Z_]\w*'),
-        ('NUMBER', r'\d+(\.\d+)?'),
-        ('OPERATOR', r'[+\-*/=<>!]'),
-        ('SEPARATOR', r'[(){};,]'),
-        ('WHITESPACE', r'\s+'),
-    ]
+KEYWORDS = ["int", "float", "string", "char", "bool", "if", "else", "while", "print", "true", "false"]
+
+def lexer(source_code):
     tokens = []
-    while code:
-        match = None
-        for token_type, pattern in token_patterns:
-            regex = re.match(pattern, code)
-            if regex:
-                match = regex.group(0)
-                if token_type != 'WHITESPACE':
-                    tokens.append((token_type, match))
-                code = code[len(match):]
-                break
-        if not match:
-            raise Exception(f"❌ Lexical Error near '{code[0]}'")
+
+    # Token specification: order matters
+    token_specification = [
+        ('NUMBER',    r'\d+(\.\d+)?'),  # int or float
+        ('IDENTIFIER',r'[A-Za-z_]\w*'),
+        ('STRING',    r'"[^"]*"'),
+        ('CHAR',      r"'[^']'"),
+        ('OP',        r'\+\+|--|==|!=|<=|>=|&&|\|\||[+\-*/=<>]'),
+        ('SEMICOLON', r';'),
+        ('LPAREN',    r'\('),
+        ('RPAREN',    r'\)'),
+        ('LBRACE',    r'\{'),
+        ('RBRACE',    r'\}'),
+        ('SKIP',      r'[ \t\n]+'),
+        ('MISMATCH',  r'.'),
+    ]
+
+    tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
+
+    for mo in re.finditer(tok_regex, source_code):
+        kind = mo.lastgroup
+        value = mo.group()
+        if kind == 'SKIP':
+            continue
+        elif kind == 'IDENTIFIER' and value in KEYWORDS:
+            kind = 'KEYWORD'
+        elif kind == 'MISMATCH':
+            raise RuntimeError(f'Lexical Error near {value}')
+        tokens.append((kind, value))
     return tokens
